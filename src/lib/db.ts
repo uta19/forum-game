@@ -133,3 +133,13 @@ export async function addComment(c: { id: string; postId: string; role: string; 
 export async function likeComment(commentId: string) {
   await pool.query("UPDATE comments SET likes = likes + 1 WHERE id = $1", [commentId]);
 }
+
+export async function getPrompt(key: string): Promise<string> {
+  const { rows } = await pool.query("SELECT value FROM prompts WHERE key = $1", [key]);
+  return rows[0]?.value || "";
+}
+
+export async function getConfig(key: string, fallback: string = ""): Promise<string> {
+  const { rows } = await pool.query("SELECT value FROM config WHERE key = $1", [key]);
+  return rows[0]?.value || fallback;
+}

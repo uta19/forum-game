@@ -8,7 +8,7 @@ const pool = new Pool({
 
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const BASE_URL = "https://openrouter.ai/api/v1";
-const MODEL = "google/gemini-2.5-flash-preview";
+const MODEL = "google/gemini-3.1-pro-preview";
 
 const OPTIMIZE_PROMPT = `你是一个"高维缺德编剧"。我会给你一个论坛帖子的原始数据（板块、标题、正文、system_prompt）。
 请你基于原始设定，重新优化输出，让它更有趣、更有画面感、更能引发互动。
