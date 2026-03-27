@@ -55,7 +55,7 @@ export default function PostDetail() {
   useEffect(() => { loadPost(); loadComments(); }, [loadPost, loadComments]);
   useEffect(() => scrollToBottom(), [comments.length, scrollToBottom]);
 
-  if (!post) return <div className="p-8 text-center text-gray-400">加载中...</div>;
+  if (!post) return <div className="p-8 text-center" style={{ color: "var(--text-muted)" }}>加载中...</div>;
 
   const triggerHostReply = async (allComments: CommentData[]) => {
     if (loading) return;
@@ -83,7 +83,6 @@ export default function PostDetail() {
       const data = await res.json();
       const reply = data.reply || "（楼主暂时没有回复）";
 
-      // 写入数据库
       const commentId = cid();
       await fetch(`/api/posts/${id}/comments`, {
         method: "POST",
@@ -94,7 +93,6 @@ export default function PostDetail() {
       pendingRef.current = 0;
       await loadComments();
     } catch {
-      // 错误不写库
       setComments((prev) => [...prev, { id: cid(), role: "assistant", content: "网络开小差了，请重试", likes: 0, created_at: new Date().toISOString() }]);
     } finally {
       setLoading(false);
@@ -107,7 +105,6 @@ export default function PostDetail() {
     setInput("");
 
     const commentId = cid();
-    // 写入数据库
     await fetch(`/api/posts/${id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,28 +133,28 @@ export default function PostDetail() {
   };
 
   return (
-    <div className="flex flex-col min-h-dvh bg-white pb-28">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
+    <div className="flex flex-col min-h-dvh pb-28" style={{ background: "var(--bg-card)" }}>
+      <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3 px-4 py-2.5">
-          <button onClick={() => router.back()} className="text-gray-400 text-lg">←</button>
-          <span className="flex-1 text-sm font-medium text-gray-700 truncate">帖子详情</span>
+          <button onClick={() => router.back()} style={{ color: "var(--text-muted)" }} className="text-lg">←</button>
+          <span className="flex-1 text-sm font-medium truncate" style={{ color: "var(--text-secondary)" }}>帖子详情</span>
         </div>
       </header>
 
       <div ref={scrollRef}>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{post.zone}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>{post.zone}</span>
             {post.is_official && (
-              <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded font-medium">🔥 精华</span>
+              <span className="text-[10px] text-orange-500 bg-orange-50 dark:bg-orange-950 px-1.5 py-0.5 rounded font-medium">🔥 精华</span>
             )}
           </div>
-          <h1 className="text-base font-bold text-gray-900 leading-snug">{post.title}</h1>
-          <p className="text-sm text-gray-700 mt-1.5 leading-normal">{post.content}</p>
+          <h1 className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{post.title}</h1>
+          <p className="text-sm mt-1.5 leading-normal" style={{ color: "var(--text-secondary)" }}>{post.content}</p>
         </div>
 
-        <div className="h-2 bg-gray-50" />
-        <div className="px-4 py-2 text-sm font-bold text-gray-900 border-b border-gray-100">回帖区</div>
+        <div className="h-2" style={{ background: "var(--divider)" }} />
+        <div className="px-4 py-2 text-sm font-bold border-b" style={{ color: "var(--text-primary)", borderColor: "var(--border)" }}>回帖区</div>
 
         <AnimatePresence initial={false}>
           {comments.map((c, i) => (
@@ -166,37 +163,39 @@ export default function PostDetail() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15 }}
-              className="border-b border-gray-50"
+              className="border-b"
+              style={{ borderColor: "var(--border)" }}
             >
               <div className="px-4 py-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs text-gray-400">{i + 1}楼</span>
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>{i + 1}楼</span>
                   {c.role === "assistant" && (
                     <span className="text-[10px] bg-[#ff4757] text-white px-1.5 py-[1px] rounded">楼主</span>
                   )}
                   {c.role === "user" && (
-                    <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-[1px] rounded">网友</span>
+                    <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>网友</span>
                   )}
                   <button
                     onClick={() => handleLike(c.id)}
-                    className="ml-auto flex items-center gap-1 text-xs text-gray-300 hover:text-[#ff4757] active:scale-110 transition-all"
+                    className="ml-auto flex items-center gap-1 text-xs hover:text-[#ff4757] active:scale-110 transition-all"
+                    style={{ color: "var(--text-muted)" }}
                   >
                     <span>👍</span>
                     {c.likes > 0 && <span>{c.likes}</span>}
                   </button>
                 </div>
-                <p className="text-sm text-gray-800 leading-normal">{c.content}</p>
+                <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{c.content}</p>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
         {loading && (
-          <div className="px-4 py-2 border-b border-gray-50">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          <div className="px-4 py-2 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)", animationDelay: "0ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)", animationDelay: "150ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)", animationDelay: "300ms" }} />
               <span>楼主正在回复...</span>
             </div>
           </div>
@@ -204,12 +203,12 @@ export default function PostDetail() {
         <div className="h-2" />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)] z-40">
+      <div className="fixed bottom-0 left-0 right-0 border-t pb-[env(safe-area-inset-bottom)] z-40" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
         <div className="flex gap-2 px-3 py-1.5 overflow-x-auto hide-scrollbar">
           <button
             onClick={handleForceReply}
             disabled={loading}
-            className="shrink-0 text-xs text-[#ff4757] bg-red-50 px-2.5 py-1 rounded-full disabled:opacity-40 font-medium"
+            className="shrink-0 text-xs text-[#ff4757] bg-red-50 dark:bg-red-950 px-2.5 py-1 rounded-full disabled:opacity-40 font-medium"
           >
             @楼主
           </button>
@@ -221,12 +220,13 @@ export default function PostDetail() {
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="写下你的回复..."
             disabled={loading}
-            className="flex-1 h-9 bg-gray-50 rounded-lg px-3 text-sm outline-none focus:ring-1 focus:ring-gray-200 disabled:opacity-40"
+            className="flex-1 h-9 rounded-lg px-3 text-sm outline-none disabled:opacity-40"
+            style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
           />
           <button
             onClick={() => handleSend()}
             disabled={loading || !input.trim()}
-            className="h-9 px-4 bg-gray-900 text-white text-sm rounded-lg disabled:opacity-40"
+            className="h-9 px-4 bg-gray-900 dark:bg-white text-white dark:text-black text-sm rounded-lg disabled:opacity-40"
           >
             发布
           </button>

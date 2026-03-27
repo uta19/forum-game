@@ -62,6 +62,7 @@ export interface PostRow {
   system_prompt: string;
   created_at: string;
   comment_count: number;
+  views: number;
 }
 
 export async function getPosts(zone?: string): Promise<PostRow[]> {
@@ -75,7 +76,7 @@ export async function getPosts(zone?: string): Promise<PostRow[]> {
     sql += " WHERE p.zone = $1";
     params.push(zone);
   }
-  sql += " ORDER BY p.is_official DESC, p.created_at DESC";
+  sql += " ORDER BY (COALESCE(p.views,0) + COALESCE(c.cnt,0) * 5) DESC, p.created_at DESC";
   const { rows } = await pool.query(sql, params);
   return rows;
 }
@@ -83,6 +84,10 @@ export async function getPosts(zone?: string): Promise<PostRow[]> {
 export async function getPost(id: string) {
   const { rows } = await pool.query("SELECT * FROM posts WHERE id = $1", [id]);
   return rows[0] || null;
+}
+
+export async function incrementViews(id: string) {
+  await pool.query("UPDATE posts SET views = COALESCE(views,0) + 1 WHERE id = $1", [id]);
 }
 
 export async function createPost(post: {
