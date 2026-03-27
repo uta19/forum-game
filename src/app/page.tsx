@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import CreatePostModal from "@/components/CreatePostModal";
+import Entrance from "@/components/Entrance";
 
 interface PostItem {
   id: string;
@@ -15,6 +16,7 @@ interface PostItem {
 }
 
 export default function Home() {
+  const [hasEntered, setHasEntered] = useState(false);
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [zones, setZones] = useState<string[]>(["全部"]);
   const [zone, setZone] = useState("全部");
@@ -58,6 +60,10 @@ export default function Home() {
     loadPosts();
     loadZones();
   };
+
+  if (!hasEntered) {
+    return <Entrance onEnter={() => setHasEntered(true)} />;
+  }
 
   return (
     <div className="min-h-dvh bg-gray-50">

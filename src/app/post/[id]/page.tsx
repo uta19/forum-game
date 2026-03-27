@@ -48,7 +48,7 @@ export default function PostDetail() {
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     }, 100);
   }, []);
 
@@ -136,7 +136,7 @@ export default function PostDetail() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-white">
+    <div className="flex flex-col min-h-dvh bg-white pb-28">
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-2.5">
           <button onClick={() => router.back()} className="text-gray-400 text-lg">←</button>
@@ -144,7 +144,7 @@ export default function PostDetail() {
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
+      <div ref={scrollRef}>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{post.zone}</span>
@@ -204,7 +204,7 @@ export default function PostDetail() {
         <div className="h-2" />
       </div>
 
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)] z-40">
         <div className="flex gap-2 px-3 py-1.5 overflow-x-auto hide-scrollbar">
           <button
             onClick={handleForceReply}
@@ -226,7 +226,7 @@ export default function PostDetail() {
           <button
             onClick={() => handleSend()}
             disabled={loading || !input.trim()}
-            className="h-9 px-4 bg-[#ff4757] text-white text-sm rounded-lg disabled:opacity-40"
+            className="h-9 px-4 bg-gray-900 text-white text-sm rounded-lg disabled:opacity-40"
           >
             发布
           </button>
