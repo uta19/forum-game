@@ -1,11 +1,12 @@
 import { create } from "zustand";
-import { Post, Comment, OFFICIAL_POSTS } from "./data";
+import { Post, Comment, OFFICIAL_POSTS, ZONES as DEFAULT_ZONES } from "./data";
 
 let _id = 0;
 const uid = () => `c-${Date.now()}-${++_id}`;
 
 interface ForumState {
   posts: Post[];
+  zones: string[];
   loading: Record<string, boolean>;
 
   addPost: (post: Post) => void;
@@ -13,10 +14,12 @@ interface ForumState {
   setLoading: (postId: string, v: boolean) => void;
   likeComment: (postId: string, commentId: string) => void;
   getPost: (postId: string) => Post | undefined;
+  addZone: (name: string) => void;
 }
 
 export const useForumStore = create<ForumState>((set, get) => ({
   posts: [...OFFICIAL_POSTS],
+  zones: [...DEFAULT_ZONES],
   loading: {},
 
   addPost: (post) =>
@@ -47,6 +50,12 @@ export const useForumStore = create<ForumState>((set, get) => ({
     })),
 
   getPost: (postId) => get().posts.find((p) => p.id === postId),
+
+  addZone: (name) =>
+    set((s) => {
+      if (s.zones.includes(name)) return s;
+      return { zones: [...s.zones, name] };
+    }),
 }));
 
 export { uid };

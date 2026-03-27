@@ -3,14 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ZONES } from "@/lib/data";
 import { useForumStore } from "@/lib/store";
 import CreatePostModal from "@/components/CreatePostModal";
 
 export default function Home() {
   const posts = useForumStore((s) => s.posts);
+  const zones = useForumStore((s) => s.zones);
+  const addZone = useForumStore((s) => s.addZone);
   const [zone, setZone] = useState("全部");
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddZone, setShowAddZone] = useState(false);
+  const [newZoneName, setNewZoneName] = useState("");
 
   const filtered = zone === "全部" ? posts : posts.filter((p) => p.zone === zone);
   const sorted = [...filtered].sort((a, b) => {
@@ -18,6 +21,16 @@ export default function Home() {
     if (!a.isOfficial && b.isOfficial) return 1;
     return 0;
   });
+
+  const handleAddZone = () => {
+    const name = newZoneName.trim();
+    if (name && !zones.includes(name)) {
+      addZone(name);
+      setZone(name);
+    }
+    setNewZoneName("");
+    setShowAddZone(false);
+  };
 
   return (
     <div className="min-h-dvh bg-gray-50">
@@ -28,8 +41,8 @@ export default function Home() {
           <p className="text-xs text-gray-400 mt-0.5">遇事不决，发帖就对了</p>
         </div>
         {/* Zone Tabs */}
-        <div className="flex gap-1 px-4 py-2 overflow-x-auto hide-scrollbar">
-          {ZONES.map((z) => (
+        <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto hide-scrollbar">
+          {zones.map((z) => (
             <button
               key={z}
               onClick={() => setZone(z)}
@@ -42,6 +55,27 @@ export default function Home() {
               {z}
             </button>
           ))}
+          {/* Add Zone Button */}
+          {showAddZone ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <input
+                autoFocus
+                value={newZoneName}
+                onChange={(e) => setNewZoneName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddZone()}
+                onBlur={handleAddZone}
+                placeholder="板块名"
+                className="w-20 text-xs px-2 py-1.5 rounded-full bg-gray-100 outline-none"
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddZone(true)}
+              className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200"
+            >
+              +
+            </button>
+          )}
         </div>
       </header>
 
@@ -70,6 +104,11 @@ export default function Home() {
                     {!post.isOfficial && (
                       <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded font-medium">
                         🆕 新帖
+                      </span>
+                    )}
+                    {post.comments.length >= 5 && (
+                      <span className="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded font-medium">
+                        💥 爆
                       </span>
                     )}
                   </div>

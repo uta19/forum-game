@@ -2,17 +2,30 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ZONES } from "@/lib/data";
 import { useForumStore, uid } from "@/lib/store";
-
-const ZONE_OPTIONS = ZONES.filter((z) => z !== "全部");
 
 export default function CreatePostModal({ onClose }: { onClose: () => void }) {
   const addPost = useForumStore((s) => s.addPost);
-  const [zone, setZone] = useState(ZONE_OPTIONS[0]);
+  const zones = useForumStore((s) => s.zones);
+  const addZone = useForumStore((s) => s.addZone);
+  const zoneOptions = zones.filter((z) => z !== "全部");
+
+  const [zone, setZone] = useState(zoneOptions[0]);
   const [identity, setIdentity] = useState("");
   const [crisis, setCrisis] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAddZone, setShowAddZone] = useState(false);
+  const [newZoneName, setNewZoneName] = useState("");
+
+  const handleAddZone = () => {
+    const name = newZoneName.trim();
+    if (name && !zones.includes(name)) {
+      addZone(name);
+      setZone(name);
+    }
+    setNewZoneName("");
+    setShowAddZone(false);
+  };
 
   const handleSubmit = async () => {
     if (!identity.trim() || !crisis.trim()) return;
@@ -53,7 +66,8 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-white rounded-t-2xl p-5 pb-[env(safe-area-inset-bottom)]"
+        className="w-full max-w-lg bg-white rounded-t-2xl p-5"
+        style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold">发布求助帖</h2>
@@ -63,7 +77,7 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
         {/* Zone */}
         <label className="text-xs text-gray-500 mb-1 block">板块</label>
         <div className="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">
-          {ZONE_OPTIONS.map((z) => (
+          {zoneOptions.map((z) => (
             <button
               key={z}
               onClick={() => setZone(z)}
@@ -74,6 +88,24 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
               {z}
             </button>
           ))}
+          {showAddZone ? (
+            <input
+              autoFocus
+              value={newZoneName}
+              onChange={(e) => setNewZoneName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddZone()}
+              onBlur={handleAddZone}
+              placeholder="板块名"
+              className="shrink-0 w-20 text-xs px-2 py-1.5 rounded-full bg-gray-100 outline-none"
+            />
+          ) : (
+            <button
+              onClick={() => setShowAddZone(true)}
+              className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-400"
+            >
+              +
+            </button>
+          )}
         </div>
 
         {/* Identity */}
