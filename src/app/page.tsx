@@ -2,14 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import CreatePostModal from "@/components/CreatePostModal";
 import Entrance from "@/components/Entrance";
-
-function isNight() {
-  const h = new Date().getHours();
-  return h >= 18 || h < 6;
-}
 
 interface PostItem {
   id: string;
@@ -22,13 +16,23 @@ interface PostItem {
 }
 
 export default function Home() {
-  const [hasEntered, setHasEntered] = useState(() => !isNight());
+  const [hasEntered, setHasEntered] = useState(true); // default true, check in useEffect
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [zones, setZones] = useState<string[]>(["全部"]);
   const [zone, setZone] = useState("全部");
   const [showCreate, setShowCreate] = useState(false);
   const [showAddZone, setShowAddZone] = useState(false);
   const [newZoneName, setNewZoneName] = useState("");
+
+  useEffect(() => {
+    const entered = sessionStorage.getItem("entered");
+    if (!entered) setHasEntered(false);
+  }, []);
+
+  const handleEnter = () => {
+    sessionStorage.setItem("entered", "1");
+    setHasEntered(true);
+  };
 
   const loadPosts = useCallback(async () => {
     const url = zone === "全部" ? "/api/posts" : `/api/posts?zone=${encodeURIComponent(zone)}`;
@@ -67,12 +71,10 @@ export default function Home() {
     loadZones();
   };
 
-  if (!hasEntered) {
-    return <Entrance onEnter={() => setHasEntered(true)} />;
-  }
-
   return (
     <div className="min-h-dvh" style={{ background: "var(--bg)" }}>
+      {!hasEntered && <Entrance onEnter={handleEnter} />}
+
       <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
         <div className="px-4 pt-3 pb-1">
           <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>跨位面异常互助论坛</h1>
@@ -83,12 +85,12 @@ export default function Home() {
             <button
               key={z}
               onClick={() => setZone(z)}
-              className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors ${
+              className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors"
+              style={
                 zone === z
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-black"
-                  : ""
-              }`}
-              style={zone !== z ? { background: "var(--bg-input)", color: "var(--text-secondary)" } : undefined}
+                  ? { background: "var(--btn-primary)", color: "var(--btn-primary-text)" }
+                  : { background: "var(--bg-input)", color: "var(--text-secondary)" }
+              }
               title={z}
             >
               {z.length > 6 ? z.slice(0, 6) + ".." : z}
@@ -118,50 +120,42 @@ export default function Home() {
       </header>
 
       <main className="px-4 py-3 space-y-2 pb-24">
-        <AnimatePresence initial={false}>
-          {posts.map((post) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
+        {posts.map((post) => (
+          <Link key={post.id} href={`/post/${post.id}`}>
+            <div
+              className="rounded-xl p-3.5 active:scale-[0.99] transition-transform shadow-sm mb-2"
+              style={{ background: "var(--bg-card)" }}
             >
-              <Link href={`/post/${post.id}`}>
-                <div
-                  className="rounded-xl p-3.5 active:scale-[0.99] transition-transform shadow-sm"
-                  style={{ background: "var(--bg-card)" }}
-                >
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>
-                      {post.zone}
-                    </span>
-                    {post.is_official && (
-                      <span className="text-[10px] text-orange-500 bg-orange-50 dark:bg-orange-950 px-1.5 py-0.5 rounded font-medium">🔥 精华</span>
-                    )}
-                    {!post.is_official && (
-                      <span className="text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded font-medium">🆕 新帖</span>
-                    )}
-                    {post.comment_count >= 5 && (
-                      <span className="text-[10px] text-red-500 bg-red-50 dark:bg-red-950 px-1.5 py-0.5 rounded font-medium">💥 爆</span>
-                    )}
-                  </div>
-                  <h2 className="text-sm font-bold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{post.title}</h2>
-                  <p className="text-xs mt-1 line-clamp-1" style={{ color: "var(--text-muted)" }}>{post.content}</p>
-                  <div className="flex items-center gap-3 mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
-                    <span>💬 {post.comment_count}</span>
-                    <span>👁 {post.views || 0}</span>
-                    <span className="ml-auto" style={{ color: "var(--text-secondary)" }}>进入 →</span>
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>
+                  {post.zone}
+                </span>
+                {post.is_official && (
+                  <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🔥 精华</span>
+                )}
+                {!post.is_official && (
+                  <span className="text-[10px] text-blue-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🆕 新帖</span>
+                )}
+                {post.comment_count >= 5 && (
+                  <span className="text-[10px] text-red-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>💥 爆</span>
+                )}
+              </div>
+              <h2 className="text-sm font-bold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{post.title}</h2>
+              <p className="text-xs mt-1 line-clamp-1" style={{ color: "var(--text-muted)" }}>{post.content}</p>
+              <div className="flex items-center gap-3 mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                <span>💬 {post.comment_count}</span>
+                <span>👁 {post.views || 0}</span>
+                <span className="ml-auto" style={{ color: "var(--text-secondary)" }}>进入 →</span>
+              </div>
+            </div>
+          </Link>
+        ))}
       </main>
 
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-6 right-4 w-14 h-14 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full shadow-lg flex items-center justify-center text-2xl active:scale-90 transition-transform z-50"
+        className="fixed bottom-6 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl active:scale-90 transition-transform z-50"
+        style={{ background: "var(--btn-primary)", color: "var(--btn-primary-text)" }}
       >
         +
       </button>

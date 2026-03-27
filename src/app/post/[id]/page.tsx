@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface PostData {
   id: string;
@@ -167,16 +166,12 @@ export default function PostDetail() {
         <div className="h-2" style={{ background: "var(--divider)" }} />
         <div className="px-4 py-2 text-sm font-bold border-b" style={{ color: "var(--text-primary)", borderColor: "var(--border)" }}>回帖区</div>
 
-        <AnimatePresence initial={false}>
-          {comments.map((c, i) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-              className="border-b"
-              style={{ borderColor: "var(--border)" }}
-            >
+        {comments.map((c, i) => (
+          <div
+            key={c.id}
+            className="border-b"
+            style={{ borderColor: "var(--border)" }}
+          >
               <div className="px-4 py-2">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs" style={{ color: "var(--text-muted)" }}>{i + 1}楼</span>
@@ -196,10 +191,9 @@ export default function PostDetail() {
                   </button>
                 </div>
                 <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{c.content}</p>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+            </div>
+          </div>
+        ))}
 
         <div className="h-2" />
       </div>
