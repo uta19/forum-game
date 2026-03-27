@@ -114,40 +114,31 @@ export default function PostDetail() {
   };
 
   const stageLabel = post.stages[stage] || post.stages[0];
-  const progress = ((stage + 1) / post.stages.length) * 100;
 
   return (
     <div className="flex flex-col h-dvh bg-white">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-2.5">
           <button onClick={() => router.back()} className="text-gray-400 text-lg">←</button>
           <span className="flex-1 text-sm font-medium text-gray-700 truncate">帖子详情</span>
-          <span className="text-xs text-[#ff4757]">{stageLabel}</span>
-        </div>
-        <div className="h-[2px] bg-gray-50">
-          <motion.div
-            className="h-full bg-[#ff4757]"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5 }}
-          />
+          <span className="text-xs text-gray-400">{stageLabel}</span>
         </div>
       </header>
 
       {/* Scrollable */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
         {/* OP Post */}
-        <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base">
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm">
               {post.avatar}
             </div>
             <span className="text-sm text-gray-500">{post.author}</span>
           </div>
-          <h1 className="text-lg font-bold text-gray-900 leading-snug">{post.title}</h1>
-          <p className="text-[15px] text-gray-700 mt-2 leading-relaxed">{post.content}</p>
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <h1 className="text-base font-bold text-gray-900 leading-snug">{post.title}</h1>
+          <p className="text-sm text-gray-700 mt-1.5 leading-normal">{post.content}</p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {post.tags.map((t) => (
               <span key={t} className="text-xs text-gray-400">#{t}</span>
             ))}
@@ -158,7 +149,7 @@ export default function PostDetail() {
         <div className="h-2 bg-gray-50" />
 
         {/* Reply Section Title */}
-        <div className="px-4 py-2.5 text-sm font-bold text-gray-900 border-b border-gray-100">
+        <div className="px-4 py-2 text-sm font-bold text-gray-900 border-b border-gray-100">
           回帖区
         </div>
 
@@ -172,9 +163,9 @@ export default function PostDetail() {
               transition={{ duration: 0.15 }}
               className="border-b border-gray-50"
             >
-              <div className="px-4 py-3">
-                {/* Floor number + badge */}
-                <div className="flex items-center gap-2 mb-1.5">
+              <div className="px-4 py-2">
+                {/* Floor number + badge + like */}
+                <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-gray-400">{msg.floor}楼</span>
                   {msg.role === "host" && (
                     <span className="text-[10px] bg-[#ff4757] text-white px-1.5 py-[1px] rounded">楼主</span>
@@ -182,19 +173,16 @@ export default function PostDetail() {
                   {msg.role === "player" && (
                     <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-[1px] rounded">我</span>
                   )}
-                </div>
-                {/* Content */}
-                <p className="text-[15px] text-gray-800 leading-relaxed">{msg.content}</p>
-                {/* Like */}
-                <div className="flex justify-end mt-2">
                   <button
                     onClick={() => likeMessage(id!, msg.id)}
-                    className="flex items-center gap-1 text-xs text-gray-300 hover:text-[#ff4757] active:scale-110 transition-all"
+                    className="ml-auto flex items-center gap-1 text-xs text-gray-300 hover:text-[#ff4757] active:scale-110 transition-all"
                   >
                     <span>👍</span>
                     {msg.likes > 0 && <span>{msg.likes}</span>}
                   </button>
                 </div>
+                {/* Content */}
+                <p className="text-sm text-gray-800 leading-normal">{msg.content}</p>
               </div>
             </motion.div>
           ))}
@@ -202,7 +190,7 @@ export default function PostDetail() {
 
         {/* Typing */}
         {loading && (
-          <div className="px-4 py-3 border-b border-gray-50">
+          <div className="px-4 py-2 border-b border-gray-50">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
               <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -212,8 +200,7 @@ export default function PostDetail() {
           </div>
         )}
 
-        {/* Bottom padding */}
-        <div className="h-4" />
+        <div className="h-2" />
       </div>
 
       {/* Bottom Input */}
