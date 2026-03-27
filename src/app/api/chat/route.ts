@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
     const baseUrl = process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1";
-    const model = await getConfig("model_flash", "google/gemini-3.1-pro-preview");
+    const model = await getConfig("model_flash", "google/gemini-2.5-flash");
     const replyPrompt = await getPrompt("reply_prompt");
 
     if (!apiKey) {
