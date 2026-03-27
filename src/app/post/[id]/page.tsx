@@ -19,7 +19,6 @@ interface CommentData {
   content: string;
   likes: number;
   created_at: string;
-  pending?: boolean; // placeholder for AI typing
 }
 
 const BATCH_SIZE = 3;
@@ -32,11 +31,10 @@ export default function PostDetail() {
 
   const [post, setPost] = useState<PostData | null>(null);
   const [comments, setComments] = useState<CommentData[]>([]);
-  const [replying, setReplying] = useState(false);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingSinceRef = useRef(0); // user messages since last AI reply
-  const replyingRef = useRef(false); // avoid double trigger
+  const pendingSinceRef = useRef(0);
+  const replyingRef = useRef(false);
 
   const loadPost = useCallback(async () => {
     const res = await fetch(`/api/posts/${id}`);
@@ -59,31 +57,17 @@ export default function PostDetail() {
 
   if (!post) return <div className="p-8 text-center" style={{ color: "var(--text-muted)" }}>加载中...</div>;
 
-  // Fire-and-forget AI reply — does NOT block user input
+  // Silent background AI reply — no UI indication, just appears when done
   const triggerHostReply = (snapshotComments: CommentData[]) => {
     if (replyingRef.current) return;
     replyingRef.current = true;
-    setReplying(true);
 
-    // Snapshot: only user messages since last AI reply for context
     const recentUser = snapshotComments
       .filter((c) => c.role === "user")
       .slice(-BATCH_SIZE)
       .map((c) => c.content)
       .join("；");
 
-    // Insert placeholder
-    const placeholderId = cid();
-    setComments((prev) => [...prev, {
-      id: placeholderId,
-      role: "assistant",
-      content: "",
-      likes: 0,
-      created_at: new Date().toISOString(),
-      pending: true,
-    }]);
-
-    // Async call — not awaited
     (async () => {
       try {
         const res = await fetch("/api/chat", {
@@ -102,37 +86,34 @@ export default function PostDetail() {
         const data = await res.json();
         const reply = data.reply || "（楼主暂时没有回复）";
         const likes = Math.floor(Math.random() * 80) + 20;
+        const commentId = cid();
 
         // Save to DB
         await fetch(`/api/posts/${id}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: placeholderId, role: "assistant", content: reply, likes }),
+          body: JSON.stringify({ id: commentId, role: "assistant", content: reply, likes }),
         });
 
-        // Replace placeholder in-place
-        setComments((prev) => prev.map((c) =>
-          c.id === placeholderId ? { ...c, content: reply, likes, pending: false } : c
-        ));
+        // Append to current comments (at latest position)
+        setComments((prev) => [...prev, {
+          id: commentId, role: "assistant", content: reply, likes, created_at: new Date().toISOString(),
+        }]);
       } catch {
-        setComments((prev) => prev.map((c) =>
-          c.id === placeholderId ? { ...c, content: "网络开小差了，请重试", pending: false } : c
-        ));
+        // silently fail
       } finally {
         pendingSinceRef.current = 0;
         replyingRef.current = false;
-        setReplying(false);
       }
     })();
   };
 
-  const handleSend = async (text?: string) => {
+  const handleSend = (text?: string) => {
     const content = (text || input).trim();
     if (!content) return;
     setInput("");
 
     const commentId = cid();
-    // Save to DB (fire and forget)
     fetch(`/api/posts/${id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -144,25 +125,20 @@ export default function PostDetail() {
       const updated = [...prev, newComment];
       pendingSinceRef.current += 1;
 
-      // Auto-trigger AI reply if enough messages and not already replying
       if (pendingSinceRef.current >= BATCH_SIZE && !replyingRef.current) {
-        // Use only non-pending comments as snapshot
-        const snapshot = updated.filter((c) => !c.pending);
-        setTimeout(() => triggerHostReply(snapshot), 0);
+        setTimeout(() => triggerHostReply(updated), 0);
       }
-
       return updated;
     });
   };
 
   const handleForceReply = () => {
     if (pendingSinceRef.current > 0 && !replyingRef.current) {
-      const snapshot = comments.filter((c) => !c.pending);
-      triggerHostReply(snapshot);
+      triggerHostReply(comments);
     }
   };
 
-  const handleLike = async (commentId: string) => {
+  const handleLike = (commentId: string) => {
     fetch(`/api/comments/${commentId}/like`, { method: "POST" });
     setComments((prev) => prev.map((c) => c.id === commentId ? { ...c, likes: c.likes + 1 } : c));
   };
@@ -173,7 +149,6 @@ export default function PostDetail() {
         <div className="flex items-center gap-3 px-4 py-2.5">
           <button onClick={() => router.back()} style={{ color: "var(--text-muted)" }} className="text-lg">←</button>
           <span className="flex-1 text-sm font-medium truncate" style={{ color: "var(--text-secondary)" }}>帖子详情</span>
-          {replying && <span className="text-[10px] text-[#ff4757] animate-pulse">楼主输入中...</span>}
         </div>
       </header>
 
@@ -211,27 +186,16 @@ export default function PostDetail() {
                   {c.role === "user" && (
                     <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>网友</span>
                   )}
-                  {!c.pending && (
-                    <button
-                      onClick={() => handleLike(c.id)}
-                      className="ml-auto flex items-center gap-1 text-xs hover:text-[#ff4757] active:scale-110 transition-all"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <span>👍</span>
-                      {c.likes > 0 && <span>{c.likes}</span>}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleLike(c.id)}
+                    className="ml-auto flex items-center gap-1 text-xs hover:text-[#ff4757] active:scale-110 transition-all"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    <span>👍</span>
+                    {c.likes > 0 && <span>{c.likes}</span>}
+                  </button>
                 </div>
-                {c.pending ? (
-                  <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)" }} />
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)", animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--text-muted)", animationDelay: "300ms" }} />
-                    <span>楼主正在回复...</span>
-                  </div>
-                ) : (
-                  <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{c.content}</p>
-                )}
+                <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{c.content}</p>
               </div>
             </motion.div>
           ))}
@@ -244,8 +208,7 @@ export default function PostDetail() {
         <div className="flex gap-2 px-3 py-1.5 overflow-x-auto hide-scrollbar">
           <button
             onClick={handleForceReply}
-            disabled={replyingRef.current}
-            className="shrink-0 text-xs text-[#ff4757] bg-red-50 dark:bg-red-950 px-2.5 py-1 rounded-full disabled:opacity-40 font-medium"
+            className="shrink-0 text-xs text-[#ff4757] bg-red-50 dark:bg-red-950 px-2.5 py-1 rounded-full font-medium"
           >
             @楼主
           </button>
