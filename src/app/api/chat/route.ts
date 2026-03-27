@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
     const chatMessages = [
       {
         role: "system" as const,
-        content: `${systemPrompt}\n\n${stageInstruction}\n\n【输出要求】\n- 严格控制在15-40字以内，像发弹幕/朋友圈一样短促\n- 完全沉浸角色，不要用"[楼主更新]"等前缀\n- 根据网友（玩家）的评论做出即时反应\n- 听从网友的指挥并播报执行结果\n- 保持角色的语气特征和高频词`,
+        content: `${systemPrompt}\n\n${stageInstruction}\n\n【输出要求】\n- 严格控制在15-40字以内，像发弹幕/朋友圈一样短促\n- 完全沉浸角色，不要用"[楼主更新]"等前缀\n- 下面可能有多条网友评论，你需要综合理解后只回复一条，挑最有价值/最有趣的方向回应\n- 听从网友的指挥并播报执行结果\n- 保持角色的语气特征和高频词`,
       },
       ...(messages || []).slice(-20),
       {
         role: "user" as const,
-        content: `[网友评论]: ${playerMessage}`,
+        content: `[网友评论汇总]: ${playerMessage}`,
       },
     ];
 
