@@ -3,26 +3,48 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Comment } from "@/lib/data";
-import { useForumStore, uid } from "@/lib/store";
 
-const EMPTY_COMMENTS: Comment[] = [];
+interface PostData {
+  id: string;
+  zone: string;
+  is_official: boolean;
+  title: string;
+  content: string;
+  system_prompt: string;
+}
+
+interface CommentData {
+  id: string;
+  role: string;
+  content: string;
+  likes: number;
+  created_at: string;
+}
+
 const BATCH_SIZE = 3;
+let _cid = 0;
+const cid = () => `c-${Date.now()}-${++_cid}`;
 
 export default function PostDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
-  const post = useForumStore((s) => s.posts.find((p) => p.id === id));
-  const comments = post?.comments ?? EMPTY_COMMENTS;
-  const loading = useForumStore((s) => s.loading[id!] ?? false);
-  const addComment = useForumStore((s) => s.addComment);
-  const setLoading = useForumStore((s) => s.setLoading);
-  const likeComment = useForumStore((s) => s.likeComment);
-
+  const [post, setPost] = useState<PostData | null>(null);
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef(0);
+
+  const loadPost = useCallback(async () => {
+    const res = await fetch(`/api/posts/${id}`);
+    if (res.ok) setPost(await res.json());
+  }, [id]);
+
+  const loadComments = useCallback(async () => {
+    const res = await fetch(`/api/posts/${id}/comments`);
+    if (res.ok) setComments(await res.json());
+  }, [id]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -30,13 +52,14 @@ export default function PostDetail() {
     }, 100);
   }, []);
 
+  useEffect(() => { loadPost(); loadComments(); }, [loadPost, loadComments]);
   useEffect(() => scrollToBottom(), [comments.length, scrollToBottom]);
 
-  if (!post) return <div className="p-8 text-center text-gray-400">帖子不存在</div>;
+  if (!post) return <div className="p-8 text-center text-gray-400">加载中...</div>;
 
-  const triggerHostReply = async (allComments: Comment[]) => {
+  const triggerHostReply = async (allComments: CommentData[]) => {
     if (loading) return;
-    setLoading(id!, true);
+    setLoading(true);
     try {
       const recentUser = allComments
         .filter((c) => c.role === "user")
@@ -49,7 +72,7 @@ export default function PostDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId: id,
-          systemPrompt: post.systemPrompt,
+          systemPrompt: post.system_prompt,
           messages: allComments.map((c) => ({
             role: c.role === "assistant" ? "assistant" : "user",
             content: c.content,
@@ -58,25 +81,23 @@ export default function PostDetail() {
         }),
       });
       const data = await res.json();
+      const reply = data.reply || "（楼主暂时没有回复）";
 
-      addComment(id!, {
-        id: uid(),
-        role: "assistant",
-        content: data.reply || "（楼主暂时没有回复）",
-        createdAt: Date.now(),
-        likes: Math.floor(Math.random() * 80) + 20,
+      // 写入数据库
+      const commentId = cid();
+      await fetch(`/api/posts/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: commentId, role: "assistant", content: reply, likes: Math.floor(Math.random() * 80) + 20 }),
       });
+
       pendingRef.current = 0;
+      await loadComments();
     } catch {
-      addComment(id!, {
-        id: uid(),
-        role: "assistant",
-        content: "网络开小差了，请重试",
-        createdAt: Date.now(),
-        likes: 0,
-      });
+      // 错误不写库
+      setComments((prev) => [...prev, { id: cid(), role: "assistant", content: "网络开小差了，请重试", likes: 0, created_at: new Date().toISOString() }]);
     } finally {
-      setLoading(id!, false);
+      setLoading(false);
     }
   };
 
@@ -85,18 +106,21 @@ export default function PostDetail() {
     if (!content || loading) return;
     setInput("");
 
-    const userComment: Comment = {
-      id: uid(),
-      role: "user",
-      content,
-      createdAt: Date.now(),
-      likes: 0,
-    };
-    addComment(id!, userComment);
+    const commentId = cid();
+    // 写入数据库
+    await fetch(`/api/posts/${id}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: commentId, role: "user", content, likes: 0 }),
+    });
+
+    const newComment: CommentData = { id: commentId, role: "user", content, likes: 0, created_at: new Date().toISOString() };
+    const updated = [...comments, newComment];
+    setComments(updated);
     pendingRef.current += 1;
 
     if (pendingRef.current >= BATCH_SIZE) {
-      await triggerHostReply([...comments, userComment]);
+      await triggerHostReply(updated);
     }
   };
 
@@ -104,6 +128,11 @@ export default function PostDetail() {
     if (pendingRef.current > 0 && !loading) {
       triggerHostReply(comments);
     }
+  };
+
+  const handleLike = async (commentId: string) => {
+    await fetch(`/api/comments/${commentId}/like`, { method: "POST" });
+    setComments((prev) => prev.map((c) => c.id === commentId ? { ...c, likes: c.likes + 1 } : c));
   };
 
   return (
@@ -116,11 +145,10 @@ export default function PostDetail() {
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
-        {/* OP */}
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{post.zone}</span>
-            {post.isOfficial && (
+            {post.is_official && (
               <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded font-medium">🔥 精华</span>
             )}
           </div>
@@ -129,10 +157,8 @@ export default function PostDetail() {
         </div>
 
         <div className="h-2 bg-gray-50" />
-
         <div className="px-4 py-2 text-sm font-bold text-gray-900 border-b border-gray-100">回帖区</div>
 
-        {/* Replies — 保持原有楼层样式 */}
         <AnimatePresence initial={false}>
           {comments.map((c, i) => (
             <motion.div
@@ -149,10 +175,10 @@ export default function PostDetail() {
                     <span className="text-[10px] bg-[#ff4757] text-white px-1.5 py-[1px] rounded">楼主</span>
                   )}
                   {c.role === "user" && (
-                    <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-[1px] rounded">我</span>
+                    <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-[1px] rounded">网友</span>
                   )}
                   <button
-                    onClick={() => likeComment(id!, c.id)}
+                    onClick={() => handleLike(c.id)}
                     className="ml-auto flex items-center gap-1 text-xs text-gray-300 hover:text-[#ff4757] active:scale-110 transition-all"
                   >
                     <span>👍</span>

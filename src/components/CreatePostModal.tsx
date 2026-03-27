@@ -1,26 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useForumStore, uid } from "@/lib/store";
 
 export default function CreatePostModal({ onClose }: { onClose: () => void }) {
-  const addPost = useForumStore((s) => s.addPost);
-  const zones = useForumStore((s) => s.zones);
-  const addZone = useForumStore((s) => s.addZone);
-  const zoneOptions = zones.filter((z) => z !== "全部");
-
-  const [zone, setZone] = useState(zoneOptions[0]);
+  const [zones, setZones] = useState<string[]>([]);
+  const [zone, setZone] = useState("");
   const [identity, setIdentity] = useState("");
   const [crisis, setCrisis] = useState("");
   const [loading, setLoading] = useState(false);
   const [showAddZone, setShowAddZone] = useState(false);
   const [newZoneName, setNewZoneName] = useState("");
 
-  const handleAddZone = () => {
+  useEffect(() => {
+    fetch("/api/zones").then((r) => r.json()).then((data) => {
+      setZones(data);
+      if (data.length > 0) setZone(data[0]);
+    });
+  }, []);
+
+  const handleAddZone = async () => {
     const name = newZoneName.trim();
     if (name && !zones.includes(name)) {
-      addZone(name);
+      await fetch("/api/zones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      setZones((prev) => [...prev, name]);
       setZone(name);
     }
     setNewZoneName("");
@@ -30,7 +37,6 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = async () => {
     if (!identity.trim() || !crisis.trim()) return;
     setLoading(true);
-
     try {
       const res = await fetch("/api/create-post", {
         method: "POST",
@@ -38,19 +44,7 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
         body: JSON.stringify({ zone, identity: identity.trim(), crisis: crisis.trim() }),
       });
       const data = await res.json();
-
-      if (data.systemPrompt && data.content && data.title) {
-        addPost({
-          id: uid(),
-          zone,
-          isOfficial: false,
-          title: data.title,
-          content: data.content,
-          systemPrompt: data.systemPrompt,
-          comments: [],
-        });
-        onClose();
-      }
+      if (data.title) onClose();
     } catch {
       alert("生成失败，请重试");
     } finally {
@@ -74,18 +68,18 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-gray-400 text-lg">✕</button>
         </div>
 
-        {/* Zone */}
         <label className="text-xs text-gray-500 mb-1 block">板块</label>
         <div className="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">
-          {zoneOptions.map((z) => (
+          {zones.map((z) => (
             <button
               key={z}
               onClick={() => setZone(z)}
               className={`shrink-0 text-xs px-3 py-1.5 rounded-full ${
                 zone === z ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"
               }`}
+              title={z}
             >
-              {z}
+              {z.length > 6 ? z.slice(0, 6) + ".." : z}
             </button>
           ))}
           {showAddZone ? (
@@ -108,7 +102,6 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {/* Identity */}
         <label className="text-xs text-gray-500 mb-1 block">你的身份</label>
         <input
           value={identity}
@@ -117,7 +110,6 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
           className="w-full h-10 bg-gray-50 rounded-lg px-3 text-sm outline-none mb-3"
         />
 
-        {/* Crisis */}
         <label className="text-xs text-gray-500 mb-1 block">你遇到的危机</label>
         <textarea
           value={crisis}

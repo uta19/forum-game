@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createPost, addZone } from "@/lib/db";
 
 export const maxDuration = 60;
 
@@ -46,12 +47,23 @@ export async function POST(request: NextRequest) {
 
     const data = await res.json();
     let text = data.choices?.[0]?.message?.content?.trim() || "";
-
-    // 清理可能的 markdown 代码块
     text = text.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "").trim();
 
     const parsed = JSON.parse(text);
-    return NextResponse.json(parsed);
+
+    // 写入数据库
+    const postId = `ugc-${Date.now()}`;
+    await addZone(zone);
+    await createPost({
+      id: postId,
+      zone,
+      isOfficial: false,
+      title: parsed.title,
+      content: parsed.content,
+      systemPrompt: parsed.systemPrompt,
+    });
+
+    return NextResponse.json({ ...parsed, id: postId });
   } catch (error) {
     console.error("Create post error:", error);
     return NextResponse.json({ error: "生成失败" }, { status: 500 });
