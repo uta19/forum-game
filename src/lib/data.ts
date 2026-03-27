@@ -22,6 +22,9 @@ export interface Message {
   avatar: string;
   content: string;
   timestamp: number;
+  floor: number;
+  likes: number;
+  ip?: string;
 }
 
 export const POSTS: Post[] = [
