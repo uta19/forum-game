@@ -219,38 +219,30 @@ export default function PostDetail() {
       <div className="fixed bottom-0 left-0 right-0 z-40">
         <div className="max-w-[480px] mx-auto border-t pb-[env(safe-area-inset-bottom)]" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2 px-3 py-2.5">
-            {/* Input area with optional @楼主 chip */}
+            {/* Input with @楼主 inside */}
             <div
-              className="flex-1 flex items-center gap-1.5 h-9 rounded-lg px-2 overflow-hidden"
+              className="flex-1 flex items-center h-9 rounded-lg px-2 overflow-hidden"
               style={{ background: "var(--bg-input)" }}
             >
-              {atHost && (
-                <span
-                  className="shrink-0 inline-flex items-center text-[11px] font-medium px-1.5 rounded"
-                  style={{ background: "var(--accent)", color: "#fff", lineHeight: "1.4" }}
-                >
-                  @楼主
-                  <button onClick={() => setAtHost(false)} className="ml-1 opacity-60">×</button>
-                </span>
-              )}
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder={atHost ? "说点什么催催楼主..." : "写下你的回复..."}
+                placeholder="写下你的回复..."
                 className="flex-1 h-full bg-transparent text-sm outline-none min-w-0"
                 style={{ color: "var(--text-primary)" }}
               />
+              <button
+                onClick={() => setAtHost(!atHost)}
+                className="shrink-0 text-[11px] px-1.5 py-0.5 rounded font-medium ml-1 transition-colors"
+                style={atHost
+                  ? { background: "var(--accent)", color: "#fff" }
+                  : { background: "transparent", color: "var(--text-muted)" }
+                }
+              >
+                @楼主
+              </button>
             </div>
-            {/* @楼主 button */}
-            <button
-              onClick={handleAtHost}
-              className="shrink-0 text-xs px-2 py-1.5 rounded-lg font-medium"
-              style={{ color: "var(--accent)", background: "var(--bg-input)" }}
-            >
-              @楼主
-            </button>
-            {/* Send */}
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() && !atHost}

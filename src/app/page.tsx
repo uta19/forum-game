@@ -123,8 +123,8 @@ export default function Home() {
         {posts.map((post) => (
           <Link key={post.id} href={`/post/${post.id}`}>
             <div
-              className="rounded-xl p-3.5 active:scale-[0.99] transition-transform shadow-sm mb-2"
-              style={{ background: "var(--bg-card)" }}
+              className="rounded-xl p-3.5 active:scale-[0.99] transition-transform mb-2"
+              style={{ background: "var(--bg-input)" }}
             >
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>
