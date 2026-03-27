@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "吃瓜社区",
-  description: "文字剧情论坛游戏",
+  title: "跨位面异常互助论坛",
+  description: "遇事不决，发帖就对了",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
