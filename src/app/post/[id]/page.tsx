@@ -31,6 +31,7 @@ export default function PostDetail() {
   const [post, setPost] = useState<PostData | null>(null);
   const [comments, setComments] = useState<CommentData[]>([]);
   const [input, setInput] = useState("");
+  const [atHost, setAtHost] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingSinceRef = useRef(0);
   const replyingRef = useRef(false);
@@ -56,7 +57,6 @@ export default function PostDetail() {
 
   if (!post) return <div className="p-8 text-center" style={{ color: "var(--text-muted)" }}>加载中...</div>;
 
-  // Silent background AI reply — no UI indication, just appears when done
   const triggerHostReply = (snapshotComments: CommentData[]) => {
     if (replyingRef.current) return;
     replyingRef.current = true;
@@ -87,14 +87,12 @@ export default function PostDetail() {
         const likes = Math.floor(Math.random() * 80) + 20;
         const commentId = cid();
 
-        // Save to DB
         await fetch(`/api/posts/${id}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: commentId, role: "assistant", content: reply, likes }),
         });
 
-        // Append to current comments (at latest position)
         setComments((prev) => [...prev, {
           id: commentId, role: "assistant", content: reply, likes, created_at: new Date().toISOString(),
         }]);
@@ -108,9 +106,14 @@ export default function PostDetail() {
   };
 
   const handleSend = (text?: string) => {
-    const content = (text || input).trim();
-    if (!content) return;
+    const rawText = (text || input).trim();
+    if (!rawText && !atHost) return;
+
+    const content = atHost ? `@楼主 ${rawText}` : rawText;
+    if (!content.trim()) return;
+
     setInput("");
+    setAtHost(false);
 
     const commentId = cid();
     fetch(`/api/posts/${id}/comments`, {
@@ -124,17 +127,18 @@ export default function PostDetail() {
       const updated = [...prev, newComment];
       pendingSinceRef.current += 1;
 
-      if (pendingSinceRef.current >= BATCH_SIZE && !replyingRef.current) {
-        setTimeout(() => triggerHostReply(updated), 0);
+      // If @楼主, force reply immediately
+      if (atHost || pendingSinceRef.current >= BATCH_SIZE) {
+        if (!replyingRef.current) {
+          setTimeout(() => triggerHostReply(updated), 0);
+        }
       }
       return updated;
     });
   };
 
-  const handleForceReply = () => {
-    if (pendingSinceRef.current > 0 && !replyingRef.current) {
-      triggerHostReply(comments);
-    }
+  const handleAtHost = () => {
+    setAtHost(true);
   };
 
   const handleLike = (commentId: string) => {
@@ -142,8 +146,25 @@ export default function PostDetail() {
     setComments((prev) => prev.map((c) => c.id === commentId ? { ...c, likes: c.likes + 1 } : c));
   };
 
+  // Render @楼主 chips in comment text
+  const renderContent = (text: string) => {
+    if (!text.includes("@楼主")) return text;
+    const parts = text.split("@楼主");
+    return parts.map((part, i) => (
+      <span key={i}>
+        {i > 0 && (
+          <span
+            className="inline-flex items-center text-[11px] font-medium px-1.5 rounded mx-0.5 align-baseline"
+            style={{ background: "var(--accent)", color: "#fff", lineHeight: "1.4" }}
+          >@楼主</span>
+        )}
+        {part}
+      </span>
+    ));
+  };
+
   return (
-    <div className="flex flex-col min-h-dvh pb-28" style={{ background: "var(--bg-card)" }}>
+    <div className="flex flex-col min-h-dvh pb-28" style={{ background: "var(--bg)" }}>
       <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3 px-4 py-2.5">
           <button onClick={() => router.back()} style={{ color: "var(--text-muted)" }} className="text-lg">←</button>
@@ -151,12 +172,12 @@ export default function PostDetail() {
         </div>
       </header>
 
-      <div ref={scrollRef}>
+      <div ref={scrollRef} style={{ background: "var(--bg-card)" }}>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>{post.zone}</span>
             {post.is_official && (
-              <span className="text-[10px] text-orange-500 bg-orange-50 dark:bg-orange-950 px-1.5 py-0.5 rounded font-medium">🔥 精华</span>
+              <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🔥 精华</span>
             )}
           </div>
           <h1 className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{post.title}</h1>
@@ -167,30 +188,26 @@ export default function PostDetail() {
         <div className="px-4 py-2 text-sm font-bold border-b" style={{ color: "var(--text-primary)", borderColor: "var(--border)" }}>回帖区</div>
 
         {comments.map((c, i) => (
-          <div
-            key={c.id}
-            className="border-b"
-            style={{ borderColor: "var(--border)" }}
-          >
-              <div className="px-4 py-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>{i + 1}楼</span>
-                  {c.role === "assistant" && (
-                    <span className="text-[10px] bg-[#ff4757] text-white px-1.5 py-[1px] rounded">楼主</span>
-                  )}
-                  {c.role === "user" && (
-                    <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>网友</span>
-                  )}
-                  <button
-                    onClick={() => handleLike(c.id)}
-                    className="ml-auto flex items-center gap-1 text-xs hover:text-[#ff4757] active:scale-110 transition-all"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    <span>👍</span>
-                    {c.likes > 0 && <span>{c.likes}</span>}
-                  </button>
-                </div>
-                <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{c.content}</p>
+          <div key={c.id} className="border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="px-4 py-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>{i + 1}楼</span>
+                {c.role === "assistant" && (
+                  <span className="text-[10px] text-white px-1.5 py-[1px] rounded" style={{ background: "var(--accent)" }}>楼主</span>
+                )}
+                {c.role === "user" && (
+                  <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>网友</span>
+                )}
+                <button
+                  onClick={() => handleLike(c.id)}
+                  className="ml-auto flex items-center gap-1 text-xs active:scale-110 transition-all"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <span>👍</span>
+                  {c.likes > 0 && <span>{c.likes}</span>}
+                </button>
+              </div>
+              <p className="text-sm leading-normal" style={{ color: "var(--text-primary)" }}>{renderContent(c.content)}</p>
             </div>
           </div>
         ))}
@@ -198,31 +215,51 @@ export default function PostDetail() {
         <div className="h-2" />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t pb-[env(safe-area-inset-bottom)] z-40" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
-        <div className="flex gap-2 px-3 py-1.5 overflow-x-auto hide-scrollbar">
-          <button
-            onClick={handleForceReply}
-            className="shrink-0 text-xs text-[#ff4757] bg-red-50 dark:bg-red-950 px-2.5 py-1 rounded-full font-medium"
-          >
-            @楼主
-          </button>
-        </div>
-        <div className="flex items-center gap-2 px-3 pb-2.5">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="写下你的回复..."
-            className="flex-1 h-9 rounded-lg px-3 text-sm outline-none"
-            style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
-          />
-          <button
-            onClick={() => handleSend()}
-            disabled={!input.trim()}
-            className="h-9 px-4 bg-gray-900 dark:bg-white text-white dark:text-black text-sm rounded-lg disabled:opacity-40"
-          >
-            发布
-          </button>
+      {/* Bottom bar — max-width aligned with content */}
+      <div className="fixed bottom-0 left-0 right-0 z-40">
+        <div className="max-w-[480px] mx-auto border-t pb-[env(safe-area-inset-bottom)]" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            {/* Input area with optional @楼主 chip */}
+            <div
+              className="flex-1 flex items-center gap-1.5 h-9 rounded-lg px-2 overflow-hidden"
+              style={{ background: "var(--bg-input)" }}
+            >
+              {atHost && (
+                <span
+                  className="shrink-0 inline-flex items-center text-[11px] font-medium px-1.5 rounded"
+                  style={{ background: "var(--accent)", color: "#fff", lineHeight: "1.4" }}
+                >
+                  @楼主
+                  <button onClick={() => setAtHost(false)} className="ml-1 opacity-60">×</button>
+                </span>
+              )}
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder={atHost ? "说点什么催催楼主..." : "写下你的回复..."}
+                className="flex-1 h-full bg-transparent text-sm outline-none min-w-0"
+                style={{ color: "var(--text-primary)" }}
+              />
+            </div>
+            {/* @楼主 button */}
+            <button
+              onClick={handleAtHost}
+              className="shrink-0 text-xs px-2 py-1.5 rounded-lg font-medium"
+              style={{ color: "var(--accent)", background: "var(--bg-input)" }}
+            >
+              @楼主
+            </button>
+            {/* Send */}
+            <button
+              onClick={() => handleSend()}
+              disabled={!input.trim() && !atHost}
+              className="shrink-0 h-9 px-4 text-sm rounded-lg disabled:opacity-40"
+              style={{ background: "var(--btn-primary)", color: "var(--btn-primary-text)" }}
+            >
+              发布
+            </button>
+          </div>
         </div>
       </div>
     </div>
