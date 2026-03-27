@@ -6,14 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { POSTS, Message } from "@/lib/data";
 import { useGameStore } from "@/lib/store";
 
+const EMPTY_MESSAGES: Message[] = [];
+
 export default function PostDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const post = POSTS.find((p) => p.id === id);
 
-  const messages = useGameStore((s) => s.messages[id!] || []);
-  const stage = useGameStore((s) => s.stages[id!] || 0);
-  const loading = useGameStore((s) => s.loading[id!] || false);
+  const messages = useGameStore((s) => s.messages[id!]) ?? EMPTY_MESSAGES;
+  const stage = useGameStore((s) => s.stages[id!] ?? 0);
+  const loading = useGameStore((s) => s.loading[id!] ?? false);
   const addMessage = useGameStore((s) => s.addMessage);
   const setLoading = useGameStore((s) => s.setLoading);
   const advanceStage = useGameStore((s) => s.advanceStage);
