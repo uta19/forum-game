@@ -184,10 +184,7 @@ export default function PostDetail() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>{i + 1}楼</span>
                 {c.role === "assistant" && (
-                  <span className="text-[10px] text-white px-1.5 py-[1px] rounded" style={{ background: "var(--accent)" }}>楼主</span>
-                )}
-                {c.role === "user" && (
-                  <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--badge-bg)", color: "var(--text-muted)" }}>网友</span>
+                  <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--badge-bg)", color: "var(--text-muted)" }}>楼主</span>
                 )}
                 <button
                   onClick={() => handleLike(c.id)}
