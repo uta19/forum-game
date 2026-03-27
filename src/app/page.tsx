@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import CreatePostModal from "@/components/CreatePostModal";
 import Entrance from "@/components/Entrance";
@@ -16,13 +16,20 @@ interface PostItem {
 }
 
 export default function Home() {
-  const [hasEntered, setHasEntered] = useState(true); // default true, check in useEffect
+  const [hasEntered, setHasEntered] = useState(true);
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [zones, setZones] = useState<string[]>(["全部"]);
   const [zone, setZone] = useState("全部");
   const [showCreate, setShowCreate] = useState(false);
   const [showAddZone, setShowAddZone] = useState(false);
   const [newZoneName, setNewZoneName] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Pull-to-refresh state
+  const startY = useRef(0);
+  const [pullDist, setPullDist] = useState(0);
+  const pulling = useRef(false);
 
   useEffect(() => {
     const entered = sessionStorage.getItem("entered");
@@ -39,6 +46,7 @@ export default function Home() {
     const res = await fetch(url);
     const data = await res.json();
     setPosts(data);
+    setLoaded(true);
   }, [zone]);
 
   const loadZones = useCallback(async () => {
@@ -47,17 +55,39 @@ export default function Home() {
     setZones(["全部", ...data]);
   }, []);
 
-  useEffect(() => { loadZones(); }, [loadZones]);
-  useEffect(() => { loadPosts(); }, [loadPosts]);
+  // Load once on mount, cache in state
+  useEffect(() => { if (!loaded) { loadZones(); loadPosts(); } }, [loaded, loadZones, loadPosts]);
+  // Reload when zone changes
+  useEffect(() => { loadPosts(); }, [zone, loadPosts]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadPosts(), loadZones()]);
+    setRefreshing(false);
+  };
+
+  // Pull-to-refresh touch handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      startY.current = e.touches[0].clientY;
+      pulling.current = true;
+    }
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!pulling.current) return;
+    const dist = Math.max(0, Math.min(80, e.touches[0].clientY - startY.current));
+    setPullDist(dist);
+  };
+  const onTouchEnd = () => {
+    if (pullDist > 50) handleRefresh();
+    setPullDist(0);
+    pulling.current = false;
+  };
 
   const handleAddZone = async () => {
     const name = newZoneName.trim();
     if (name && !zones.includes(name)) {
-      await fetch("/api/zones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      await fetch("/api/zones", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
       setZones((prev) => [...prev, name]);
       setZone(name);
     }
@@ -71,8 +101,16 @@ export default function Home() {
     loadZones();
   };
 
+  const badgeStyle = { background: "var(--badge-bg)" };
+
   return (
-    <div className="min-h-dvh" style={{ background: "var(--bg)" }}>
+    <div
+      className="min-h-dvh"
+      style={{ background: "var(--bg)" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {!hasEntered && <Entrance onEnter={handleEnter} />}
 
       <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
@@ -86,58 +124,52 @@ export default function Home() {
               key={z}
               onClick={() => setZone(z)}
               className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors"
-              style={
-                zone === z
-                  ? { background: "var(--btn-primary)", color: "var(--btn-primary-text)" }
-                  : { background: "var(--bg-input)", color: "var(--text-secondary)" }
-              }
+              style={zone === z ? { background: "var(--btn-primary)", color: "var(--btn-primary-text)" } : { background: "var(--bg-input)", color: "var(--text-secondary)" }}
               title={z}
             >
               {z.length > 6 ? z.slice(0, 6) + ".." : z}
             </button>
           ))}
           {showAddZone ? (
-            <input
-              autoFocus
-              value={newZoneName}
-              onChange={(e) => setNewZoneName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddZone()}
-              onBlur={handleAddZone}
-              placeholder="板块名"
-              className="shrink-0 w-20 text-xs px-2 py-1.5 rounded-full outline-none"
-              style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
-            />
+            <input autoFocus value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddZone()} onBlur={handleAddZone} placeholder="板块名" className="shrink-0 w-20 text-xs px-2 py-1.5 rounded-full outline-none" style={{ background: "var(--bg-input)", color: "var(--text-primary)" }} />
           ) : (
-            <button
-              onClick={() => setShowAddZone(true)}
-              className="shrink-0 text-xs px-3 py-1.5 rounded-full"
-              style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}
-            >
-              +
-            </button>
+            <button onClick={() => setShowAddZone(true)} className="shrink-0 text-xs px-3 py-1.5 rounded-full" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>+</button>
           )}
         </div>
       </header>
 
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="flex justify-center overflow-hidden transition-all"
+        style={{ height: pullDist > 0 ? `${pullDist}px` : refreshing ? "40px" : "0px" }}
+      >
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+          {refreshing ? (
+            <span className="animate-spin">↻</span>
+          ) : pullDist > 50 ? (
+            <span>松手刷新</span>
+          ) : pullDist > 0 ? (
+            <span>下拉刷新</span>
+          ) : null}
+        </div>
+      </div>
+
       <main className="px-4 py-3 space-y-2 pb-24">
         {posts.map((post) => (
           <Link key={post.id} href={`/post/${post.id}`}>
-            <div
-              className="rounded-xl p-3.5 active:scale-[0.99] transition-transform mb-2"
-              style={{ background: "var(--bg-input)" }}
-            >
+            <div className="rounded-xl p-3.5 active:scale-[0.99] transition-transform mb-2" style={{ background: "var(--bg-input)" }}>
               <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>
-                  {post.zone}
+                <span className="text-[10px] px-1.5 py-0.5 rounded" style={badgeStyle}>
+                  <span style={{ color: "var(--text-muted)" }}>{post.zone}</span>
                 </span>
                 {post.is_official && (
-                  <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🔥 精华</span>
+                  <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>🔥 精华</span>
                 )}
                 {!post.is_official && (
-                  <span className="text-[10px] text-blue-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🆕 新帖</span>
+                  <span className="text-[10px] text-blue-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>🆕 新帖</span>
                 )}
                 {post.comment_count >= 5 && (
-                  <span className="text-[10px] text-red-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>💥 爆</span>
+                  <span className="text-[10px] text-red-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>💥 爆</span>
                 )}
               </div>
               <h2 className="text-sm font-bold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>{post.title}</h2>

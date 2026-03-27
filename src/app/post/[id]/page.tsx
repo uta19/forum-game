@@ -84,17 +84,17 @@ export default function PostDetail() {
         });
         const data = await res.json();
         const reply = data.reply || "（楼主暂时没有回复）";
-        const likes = Math.floor(Math.random() * 80) + 20;
         const commentId = cid();
 
+        // likes = 0, real users will like it
         await fetch(`/api/posts/${id}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: commentId, role: "assistant", content: reply, likes }),
+          body: JSON.stringify({ id: commentId, role: "assistant", content: reply, likes: 0 }),
         });
 
         setComments((prev) => [...prev, {
-          id: commentId, role: "assistant", content: reply, likes, created_at: new Date().toISOString(),
+          id: commentId, role: "assistant", content: reply, likes: 0, created_at: new Date().toISOString(),
         }]);
       } catch {
         // silently fail
@@ -113,6 +113,7 @@ export default function PostDetail() {
     if (!content.trim()) return;
 
     setInput("");
+    const wasAtHost = atHost;
     setAtHost(false);
 
     const commentId = cid();
@@ -127,8 +128,7 @@ export default function PostDetail() {
       const updated = [...prev, newComment];
       pendingSinceRef.current += 1;
 
-      // If @楼主, force reply immediately
-      if (atHost || pendingSinceRef.current >= BATCH_SIZE) {
+      if (wasAtHost || pendingSinceRef.current >= BATCH_SIZE) {
         if (!replyingRef.current) {
           setTimeout(() => triggerHostReply(updated), 0);
         }
@@ -137,54 +137,45 @@ export default function PostDetail() {
     });
   };
 
-  const handleAtHost = () => {
-    setAtHost(true);
-  };
-
   const handleLike = (commentId: string) => {
     fetch(`/api/comments/${commentId}/like`, { method: "POST" });
     setComments((prev) => prev.map((c) => c.id === commentId ? { ...c, likes: c.likes + 1 } : c));
   };
 
-  // Render @楼主 chips in comment text
+  // Render @楼主 as bold text in comment
   const renderContent = (text: string) => {
     if (!text.includes("@楼主")) return text;
     const parts = text.split("@楼主");
     return parts.map((part, i) => (
       <span key={i}>
-        {i > 0 && (
-          <span
-            className="inline-flex items-center text-[11px] font-medium px-1.5 rounded mx-0.5 align-baseline"
-            style={{ background: "var(--accent)", color: "#fff", lineHeight: "1.4" }}
-          >@楼主</span>
-        )}
+        {i > 0 && <strong style={{ color: "var(--text-primary)" }}>@楼主 </strong>}
         {part}
       </span>
     ));
   };
 
   return (
-    <div className="flex flex-col min-h-dvh pb-28" style={{ background: "var(--bg)" }}>
-      <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+    <div className="flex flex-col min-h-dvh pb-20" style={{ background: "var(--bg)" }}>
+      <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg)", borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3 px-4 py-2.5">
           <button onClick={() => router.back()} style={{ color: "var(--text-muted)" }} className="text-lg">←</button>
           <span className="flex-1 text-sm font-medium truncate" style={{ color: "var(--text-secondary)" }}>帖子详情</span>
         </div>
       </header>
 
-      <div ref={scrollRef} style={{ background: "var(--bg-card)" }}>
+      <div ref={scrollRef}>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>{post.zone}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--badge-bg)", color: "var(--text-secondary)" }}>{post.zone}</span>
             {post.is_official && (
-              <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--bg-input)" }}>🔥 精华</span>
+              <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={{ background: "var(--badge-bg)" }}>🔥 精华</span>
             )}
           </div>
           <h1 className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{post.title}</h1>
           <p className="text-sm mt-1.5 leading-normal" style={{ color: "var(--text-secondary)" }}>{post.content}</p>
         </div>
 
-        <div className="h-2" style={{ background: "var(--divider)" }} />
+        <div className="h-px" style={{ background: "var(--border)" }} />
         <div className="px-4 py-2 text-sm font-bold border-b" style={{ color: "var(--text-primary)", borderColor: "var(--border)" }}>回帖区</div>
 
         {comments.map((c, i) => (
@@ -196,7 +187,7 @@ export default function PostDetail() {
                   <span className="text-[10px] text-white px-1.5 py-[1px] rounded" style={{ background: "var(--accent)" }}>楼主</span>
                 )}
                 {c.role === "user" && (
-                  <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>网友</span>
+                  <span className="text-[10px] px-1.5 py-[1px] rounded" style={{ background: "var(--badge-bg)", color: "var(--text-muted)" }}>网友</span>
                 )}
                 <button
                   onClick={() => handleLike(c.id)}
@@ -215,11 +206,9 @@ export default function PostDetail() {
         <div className="h-2" />
       </div>
 
-      {/* Bottom bar — max-width aligned with content */}
       <div className="fixed bottom-0 left-0 right-0 z-40">
-        <div className="max-w-[480px] mx-auto border-t pb-[env(safe-area-inset-bottom)]" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+        <div className="max-w-[480px] mx-auto border-t pb-[env(safe-area-inset-bottom)]" style={{ background: "var(--bg)", borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2 px-3 py-2.5">
-            {/* Input with @楼主 inside */}
             <div
               className="flex-1 flex items-center h-9 rounded-lg px-2 overflow-hidden"
               style={{ background: "var(--bg-input)" }}
@@ -230,7 +219,7 @@ export default function PostDetail() {
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
                 placeholder="写下你的回复..."
                 className="flex-1 h-full bg-transparent text-sm outline-none min-w-0"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: "var(--text-primary)", fontSize: "16px" }}
               />
               <button
                 onClick={() => setAtHost(!atHost)}
