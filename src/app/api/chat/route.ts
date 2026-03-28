@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const chatMessages = [
       { role: "system" as const, content: fullSystem },
       ...(messages || []).slice(-20),
-      { role: "user" as const, content: `[网友最新评论]: ${playerMessage}` },
+      { role: "user" as const, content: `网友回复：${playerMessage}` },
     ];
 
     const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         messages: chatMessages,
         temperature: 1.2,
         max_tokens: 300,
+        frequency_penalty: 0.8,
       }),
     });
 
