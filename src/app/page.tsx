@@ -66,23 +66,7 @@ export default function Home() {
     setRefreshing(false);
   };
 
-  // Pull-to-refresh touch handlers
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
-      startY.current = e.touches[0].clientY;
-      pulling.current = true;
-    }
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!pulling.current) return;
-    const dist = Math.max(0, Math.min(80, e.touches[0].clientY - startY.current));
-    setPullDist(dist);
-  };
-  const onTouchEnd = () => {
-    if (pullDist > 50) handleRefresh();
-    setPullDist(0);
-    pulling.current = false;
-  };
+  // Pull-to-refresh touch handlers are on <main>
 
   const handleAddZone = async () => {
     const name = newZoneName.trim();
@@ -103,17 +87,34 @@ export default function Home() {
 
   const badgeStyle = { background: "var(--badge-bg)" };
 
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  const onMainTouchStart = (e: React.TouchEvent) => {
+    const el = mainRef.current;
+    if (el && el.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+      pulling.current = true;
+    }
+  };
+  const onMainTouchMove = (e: React.TouchEvent) => {
+    if (!pulling.current) return;
+    const dist = Math.max(0, Math.min(80, e.touches[0].clientY - startY.current));
+    setPullDist(dist);
+  };
+  const onMainTouchEnd = () => {
+    if (pullDist > 50) handleRefresh();
+    setPullDist(0);
+    pulling.current = false;
+  };
+
   return (
     <div
-      className="min-h-dvh"
+      className="min-h-dvh flex flex-col"
       style={{ background: "var(--bg)" }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
     >
       {!hasEntered && <Entrance onEnter={handleEnter} />}
 
-      <header className="sticky top-0 z-50 border-b" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+      <header className="sticky top-0 z-50 border-b shrink-0" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
         <div className="px-4 pt-3 pb-1">
           <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>跨位面异常互助论坛</h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>遇事不决，发帖就对了</p>
@@ -138,23 +139,30 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Pull-to-refresh indicator */}
-      <div
-        className="flex justify-center overflow-hidden transition-all"
-        style={{ height: pullDist > 0 ? `${pullDist}px` : refreshing ? "40px" : "0px" }}
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto pb-24"
+        onTouchStart={onMainTouchStart}
+        onTouchMove={onMainTouchMove}
+        onTouchEnd={onMainTouchEnd}
       >
-        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          {refreshing ? (
-            <span className="animate-spin">↻</span>
-          ) : pullDist > 50 ? (
-            <span>松手刷新</span>
-          ) : pullDist > 0 ? (
-            <span>下拉刷新</span>
-          ) : null}
+        {/* Pull-to-refresh indicator */}
+        <div
+          className="flex justify-center overflow-hidden transition-all"
+          style={{ height: pullDist > 0 ? `${pullDist}px` : refreshing ? "40px" : "0px" }}
+        >
+          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            {refreshing ? (
+              <span className="animate-spin">↻</span>
+            ) : pullDist > 50 ? (
+              <span>松手刷新</span>
+            ) : pullDist > 0 ? (
+              <span>下拉刷新</span>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <main className="px-4 py-3 space-y-2 pb-24">
+        <div className="px-4 py-3 space-y-2">
         {posts.map((post) => (
           <Link key={post.id} href={`/post/${post.id}`}>
             <div className="rounded-xl p-3.5 active:scale-[0.99] transition-transform mb-2" style={{ background: "var(--bg-input)" }}>
@@ -182,6 +190,7 @@ export default function Home() {
             </div>
           </Link>
         ))}
+        </div>
       </main>
 
       <button
