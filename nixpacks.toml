@@ -1,0 +1,11 @@
+[phases.build]
+cmds = ["npm run build"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[start]
+cmd = "npm start"
+
+[build]
+NO_CACHE = true
