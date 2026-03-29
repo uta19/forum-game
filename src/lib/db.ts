@@ -76,7 +76,7 @@ export async function getPosts(zone?: string): Promise<PostRow[]> {
     sql += " WHERE p.zone = $1";
     params.push(zone);
   }
-  sql += " ORDER BY p.created_at DESC";
+  sql += " ORDER BY CASE WHEN COALESCE(c.cnt,0) >= 100 THEN 0 ELSE 1 END, COALESCE(c.cnt,0) DESC, p.created_at DESC";
   const { rows } = await pool.query(sql, params);
   return rows;
 }
