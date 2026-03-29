@@ -191,7 +191,7 @@ export default function PostDetail() {
                   className="ml-auto flex items-center gap-1 text-xs active:scale-110 transition-all"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 22V11l5-9a2 2 0 0 1 2 2v4h5.5a2 2 0 0 1 2 1.9l-.8 7A2 2 0 0 1 18.7 19H7z"/><path d="M2 11h3v11H2z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM4 22H2V11h2" /></svg>
                   {c.likes > 0 && <span>{c.likes}</span>}
                 </button>
               </div>

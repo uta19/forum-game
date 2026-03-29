@@ -1,22 +1,27 @@
 /**
- * 批量导入/更新帖子脚本
- * 
+ * 只更新官方帖的批量脚本
+ *
  * 用法：
  *   DATABASE_URL="postgresql://..." node scripts/upload-posts.mjs
  *   DATABASE_URL="postgresql://..." node scripts/upload-posts.mjs scripts/my-custom-file.json
- * 
+ *
  * 默认读取 scripts/optimized-posts.json
- * 
+ *
  * JSON 格式（数组）：
  * [
  *   {
- *     "id": "xiuxian_1",           // 已有 id 则更新，新 id 则插入
- *     "zone": "修仙渡劫",
+ *     "id": "official_1",
+ *     "zone": "育才同城",
  *     "title": "...",
  *     "content": "...",
  *     "system_prompt": "..."
  *   }
  * ]
+ *
+ * 规则：
+ * - 只更新数据库里已存在的官方帖（is_official = true）
+ * - 不新增新帖子
+ * - 非官方帖或不存在的 id 直接跳过
  */
 import pg from "pg";
 import fs from "fs";
@@ -40,7 +45,6 @@ async function main() {
   console.log(`📦 读取到 ${posts.length} 条帖子\n`);
 
   let updated = 0;
-  let inserted = 0;
   let skipped = 0;
 
   for (const p of posts) {
@@ -50,29 +54,26 @@ async function main() {
       continue;
     }
 
-    // Check if exists
-    const { rows } = await pool.query("SELECT id FROM posts WHERE id = $1", [p.id]);
+    const { rows } = await pool.query(
+      "SELECT id FROM posts WHERE id = $1 AND is_official = true",
+      [p.id]
+    );
 
-    if (rows.length > 0) {
-      // Update
-      await pool.query(
-        "UPDATE posts SET title = $1, content = $2, system_prompt = $3, zone = COALESCE($4, zone) WHERE id = $5",
-        [p.title, p.content, p.system_prompt, p.zone || null, p.id]
-      );
-      console.log(`  ✏️  更新: ${p.id} — ${p.title.substring(0, 35)}...`);
-      updated++;
-    } else {
-      // Insert
-      await pool.query(
-        "INSERT INTO posts (id, zone, is_official, title, content, system_prompt) VALUES ($1, $2, $3, $4, $5, $6)",
-        [p.id, p.zone || "异世界日常", p.is_official !== false, p.title, p.content, p.system_prompt]
-      );
-      console.log(`  ➕ 新增: ${p.id} — ${p.title.substring(0, 35)}...`);
-      inserted++;
+    if (rows.length === 0) {
+      console.log(`  ⏭️  跳过（不是官方帖或数据库里不存在）: ${p.id}`);
+      skipped++;
+      continue;
     }
+
+    await pool.query(
+      "UPDATE posts SET title = $1, content = $2, system_prompt = $3, zone = COALESCE($4, zone) WHERE id = $5 AND is_official = true",
+      [p.title, p.content, p.system_prompt, p.zone || null, p.id]
+    );
+    console.log(`  ✏️  更新官方帖: ${p.id} — ${p.title.substring(0, 35)}...`);
+    updated++;
   }
 
-  console.log(`\n🎉 完成！${updated} 更新，${inserted} 新增，${skipped} 跳过`);
+  console.log(`\n🎉 完成！${updated} 条官方帖已更新，${skipped} 条跳过`);
   await pool.end();
 }
 
