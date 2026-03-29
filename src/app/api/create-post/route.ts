@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await res.json();
+    console.log("Create post LLM status:", res.status, "model:", model);
+    console.log("Create post LLM finish_reason:", data.choices?.[0]?.finish_reason);
     let text = data.choices?.[0]?.message?.content?.trim() || "";
+    console.log("Create post raw text length:", text.length, "first 100:", text.substring(0, 100));
     // 清理 markdown 代码块
     text = text.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "").trim();
 
