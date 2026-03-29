@@ -48,7 +48,7 @@ export default function CreatePostModal({ onClose }: { onClose: (zone?: string) 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => onClose()}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg rounded-t-2xl p-5"
@@ -56,7 +56,7 @@ export default function CreatePostModal({ onClose }: { onClose: (zone?: string) 
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>发布求助帖</h2>
-          <button onClick={onClose} style={{ color: "var(--text-muted)" }} className="text-lg">✕</button>
+          <button onClick={() => onClose()} style={{ color: "var(--text-muted)" }} className="text-lg">✕</button>
         </div>
 
         <label className="text-xs mb-1 block" style={{ color: "var(--text-secondary)" }}>板块</label>
