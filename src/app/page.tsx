@@ -79,10 +79,17 @@ export default function Home() {
     setShowAddZone(false);
   };
 
-  const handlePostCreated = () => {
+  const handlePostCreated = (newPostZone?: string) => {
     setShowCreate(false);
+    if (newPostZone) {
+      setZone(newPostZone);
+    }
     loadPosts();
     loadZones();
+    // 滚动到顶部定位到新帖
+    setTimeout(() => {
+      mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }, 300);
   };
 
   const badgeStyle = { background: "var(--badge-bg)" };
@@ -174,9 +181,9 @@ export default function Home() {
                   <span className="text-[10px] text-orange-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>🔥 精华</span>
                 )}
                 {!post.is_official && (
-                  <span className="text-[10px] text-blue-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>🆕 新帖</span>
+                  <span className="text-[10px] text-blue-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>new</span>
                 )}
-                {post.comment_count >= 5 && (
+                {post.comment_count >= 100 && (
                   <span className="text-[10px] text-red-500 px-1.5 py-0.5 rounded font-medium" style={badgeStyle}>💥 爆</span>
                 )}
               </div>

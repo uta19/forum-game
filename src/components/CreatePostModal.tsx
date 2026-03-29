@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-export default function CreatePostModal({ onClose }: { onClose: () => void }) {
+export default function CreatePostModal({ onClose }: { onClose: (zone?: string) => void }) {
   const [zones, setZones] = useState<string[]>([]);
   const [zone, setZone] = useState("");
   const [identity, setIdentity] = useState("");
@@ -39,7 +39,7 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
         body: JSON.stringify({ zone, identity: identity.trim(), crisis: crisis.trim() }),
       });
       const data = await res.json();
-      if (data.title) onClose();
+      if (data.title) onClose(zone);
     } catch {
       alert("生成失败，请重试");
     } finally {
@@ -86,7 +86,7 @@ export default function CreatePostModal({ onClose }: { onClose: () => void }) {
         <textarea value={crisis} onChange={(e) => setCrisis(e.target.value)} placeholder="例：送外卖途中发现客户地址是一栋不存在的楼" rows={3} className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none mb-4" style={{ background: "var(--bg-input)", color: "var(--text-primary)" }} />
 
         <button onClick={handleSubmit} disabled={loading || !identity.trim() || !crisis.trim()} className="w-full h-11 text-sm font-medium rounded-xl disabled:opacity-40" style={{ background: "var(--btn-primary)", color: "var(--btn-primary-text)" }}>
-          {loading ? "AI 正在帮你编故事..." : "生成并发布"}
+          {loading ? "正在发送..." : "生成并发布"}
         </button>
       </div>
     </div>
